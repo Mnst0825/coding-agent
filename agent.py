@@ -1,5 +1,6 @@
 import json
 import time
+import os
 
 from llm import chat
 from tools import TOOL_SCHEMAS, execute_tool
@@ -16,6 +17,18 @@ SYSTEM_PROMPT = """你是一个编程智能体。
 4. 任务完成后，用中文给出简短总结。
 """
 
+def save_log(messages, task):
+    os.makedirs("logs", exist_ok=True)
+    ts = time.strftime("%Y%m%d-%H%M%S")
+    safe_task = "".join(
+        c if c.isalnum() or c in "-_" else "_"
+        for c in task[:30]
+    )
+    path = f"logs/{ts}_{safe_task}.json"
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(messages, f, ensure_ascii=False, indent=2)
+    print(f"[日志] 已保存到 {path}")
+    return path
 
 def msg_to_dict(m):
     d = {"role": "assistant", "content": m.content or ""}
@@ -62,6 +75,7 @@ class Agent:
 
             if not m.tool_calls:
                 print(m.content or "(无输出)")
+                save_log(self.messages, task)
                 return m.content
 
             for tc in m.tool_calls:
@@ -83,4 +97,5 @@ class Agent:
                 )
 
         print("达到最大步数，停止。")
+        save_log(self.messages, task)
         return None

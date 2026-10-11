@@ -5,3 +5,4 @@ __pycache__/
 workspace/*
 !workspace/.gitkeep
 .idea/
+logs/
