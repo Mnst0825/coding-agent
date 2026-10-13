@@ -22,7 +22,7 @@ from tools import set_workspace
 from history import trim
 
 app = Flask(__name__)
-app.secret_key = os.urandom(32)
+app.secret_key = os.environ.get("SECRET_KEY", "change-me")
 WEB_PASSWORD = os.environ.get("WEB_PASSWORD", "")
 
 WORKSPACE_ROOT = Path("workspace").resolve()
@@ -140,4 +140,4 @@ def new_session():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=False)
