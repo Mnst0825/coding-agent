@@ -7,11 +7,6 @@ load_dotenv()
 from agent import Agent
 from tools import set_workspace
 
-#验证环境变量
-import os
-print("[DEBUG] MODEL =", os.environ.get("MODEL"))
-print("[DEBUG] BASE_URL =", os.environ.get("OPENAI_BASE_URL"))
-
 def main():
     parser = argparse.ArgumentParser(description="最小编程智能体")
     parser.add_argument("task", nargs="*", help="可选单次任务；不传则进入交互模式")

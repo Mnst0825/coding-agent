@@ -1,5 +1,8 @@
+import hmac
 import json
 import os
+import secrets
+import threading
 import uuid
 from functools import wraps
 from pathlib import Path
@@ -18,12 +21,23 @@ from flask import (
 load_dotenv()
 
 from agent import Agent
-from tools import set_workspace
 from history import trim
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "change-me")
+# 未配置 SECRET_KEY 时用随机值，避免使用可被猜到的固定密钥伪造 session
+app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 WEB_PASSWORD = os.environ.get("WEB_PASSWORD", "")
+if not WEB_PASSWORD:
+    print("[警告] 未设置 WEB_PASSWORD，网页登录将被禁用")
+
+# 同一会话同一时间只允许一个任务，防止并发写坏历史文件
+_locks: dict[str, threading.Lock] = {}
+_locks_guard = threading.Lock()
+
+
+def _session_lock(sid: str) -> threading.Lock:
+    with _locks_guard:
+        return _locks.setdefault(sid, threading.Lock())
 
 WORKSPACE_ROOT = Path("workspace").resolve()
 WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
@@ -83,10 +97,13 @@ def save_history(ws: str, messages):
 def login():
     error = None
     if request.method == "POST":
-        if request.form.get("password") == WEB_PASSWORD:
+        password = request.form.get("password", "")
+        if WEB_PASSWORD and hmac.compare_digest(
+            password.encode("utf-8"), WEB_PASSWORD.encode("utf-8")
+        ):
             session["logged_in"] = True
             return redirect(url_for("index"))
-        error = "密码错误"
+        error = "密码错误" if WEB_PASSWORD else "服务端未配置 WEB_PASSWORD"
     return render_template("login.html", error=error)
 
 
@@ -111,17 +128,21 @@ def api_chat():
         return jsonify({"error": "任务为空"}), 400
 
     ws = get_user_workspace()
-    history = load_history(ws)
-
-    set_workspace(ws)
-    agent = Agent(workspace=ws, max_steps=30, history=history)
+    lock = _session_lock(session["sid"])
+    if not lock.acquire(blocking=False):
+        return jsonify({"error": "上一个任务还在执行，请稍候"}), 409
 
     try:
-        result = agent.run(task)
-    except Exception as e:
-        result = f"执行出错：{type(e).__name__}: {e}"
+        history = load_history(ws)
+        agent = Agent(workspace=ws, max_steps=30, history=history)
+        try:
+            result = agent.run(task)
+        except Exception as e:
+            result = f"执行出错：{type(e).__name__}: {e}"
+        save_history(ws, agent.messages)
+    finally:
+        lock.release()
 
-    save_history(ws, agent.messages)
     return jsonify({"result": result or "(无输出)"})
 
 

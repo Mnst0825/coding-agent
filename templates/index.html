@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Coding Agent</title>
+  <!-- marked 12.0.2 / DOMPurify 3.1.6 / highlight.js 11.9.0，本地托管避免 CDN 被墙 -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/github-dark.min.css') }}">
+  <script src="{{ url_for('static', filename='vendor/marked.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='vendor/purify.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='vendor/highlight.min.js') }}"></script>
   <style>
     :root {
       --bg: #0f1115;
@@ -140,6 +145,50 @@
       border: 1px solid var(--border);
     }
 
+    /* Markdown 渲染后的样式 */
+    .bubble.md { white-space: normal; }
+    .md > :first-child { margin-top: 0; }
+    .md > :last-child { margin-bottom: 0; }
+    .md p, .md ul, .md ol, .md blockquote, .md pre, .md table { margin: 8px 0; }
+    .md h1, .md h2, .md h3, .md h4 { margin: 14px 0 8px; line-height: 1.35; }
+    .md h1 { font-size: 20px; }
+    .md h2 { font-size: 18px; }
+    .md h3 { font-size: 16px; }
+    .md h4 { font-size: 14px; }
+    .md ul, .md ol { padding-left: 22px; }
+    .md li { margin: 3px 0; }
+    .md a { color: var(--accent-hover); }
+    .md blockquote {
+      padding: 2px 12px;
+      color: var(--muted);
+      border-left: 3px solid #3a4050;
+    }
+    .md code {
+      font-family: Consolas, "JetBrains Mono", Menlo, monospace;
+      font-size: 13px;
+      padding: 2px 5px;
+      background: #262a33;
+      border-radius: 4px;
+    }
+    .md pre {
+      padding: 12px 14px;
+      overflow-x: auto;
+      background: #0d1017;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .md pre code {
+      padding: 0;
+      background: none;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .md pre code.hljs { padding: 0; background: none; }
+    .md table { border-collapse: collapse; display: block; overflow-x: auto; }
+    .md th, .md td { padding: 6px 10px; border: 1px solid var(--border); }
+    .md th { background: #1f232b; }
+    .md hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
     .composer {
       margin-top: 16px;
       display: flex;
@@ -225,9 +274,28 @@
       return bubble;
     }
 
+    // 把 Markdown 渲染进气泡；CDN 没加载成功时退回纯文本
+    function renderMarkdown(bubble, text) {
+      if (!window.marked || !window.DOMPurify) {
+        bubble.textContent = text;
+        return;
+      }
+      // 模型输出可能夹带文件里的 HTML，必须先消毒再插入，防止 XSS
+      bubble.innerHTML = DOMPurify.sanitize(marked.parse(text, { gfm: true, breaks: true }));
+      bubble.classList.add("md");
+      bubble.querySelectorAll("a").forEach((a) => {
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+      });
+      if (window.hljs) {
+        bubble.querySelectorAll("pre code").forEach((el) => hljs.highlightElement(el));
+      }
+      messages.scrollTop = messages.scrollHeight;
+    }
+
     async function send() {
       const task = input.value.trim();
-      if (!task) return;
+      if (!task || sendBtn.disabled) return;
 
       append("user", task);
       input.value = "";
@@ -240,8 +308,22 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ task }),
         });
-        const data = await resp.json();
-        bubble.textContent = data.result || data.error || "无输出";
+        if (resp.redirected || resp.url.includes("/login")) {
+          bubble.textContent = "登录已失效，请刷新页面重新登录。";
+          return;
+        }
+        let data;
+        try {
+          data = await resp.json();
+        } catch {
+          bubble.textContent = `服务器返回异常（HTTP ${resp.status}），可能是请求超时。`;
+          return;
+        }
+        if (data.result) {
+          renderMarkdown(bubble, data.result);
+        } else {
+          bubble.textContent = data.error || "无输出";
+        }
       } catch (e) {
         bubble.textContent = "请求失败：" + e;
       } finally {
@@ -259,7 +341,8 @@
     }
 
     input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") send();
+      // 中文输入法选词时按回车不应发送
+      if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) send();
     });
 
     input.focus();

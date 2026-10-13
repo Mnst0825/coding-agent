@@ -1,20 +1,28 @@
 import json
 import os
+import platform
 import time
 
 from llm import chat
 from tools import TOOL_SCHEMAS, execute_tool
 from history import trim, truncate_tool_result
 
+MAX_API_ERRORS = 3
+
+if platform.system() == "Windows":
+    SHELL_HINT = "运行环境是 Windows，shell 命令请使用 Windows 兼容写法（如 dir 而不是 ls）。"
+else:
+    SHELL_HINT = f"运行环境是 {platform.system()}，shell 命令请使用 POSIX 写法。"
+
 SYSTEM_PROMPT = """你是一个编程智能体。
 你只能通过工具读写文件和执行命令。
 当前工作目录是：{workspace}
-运行环境是 Windows，shell 命令请使用 Windows 兼容写法（如 dir 而不是 ls）。
+{shell_hint}
 
 工作流程：
 1. 先用 list_files 探索目录。
 2. 用 read_file 查看关键文件，不要凭猜测改代码。
-3. 修改文件时优先用 edit_file 局部替换，避免整文件重写。
+3. 修改已有文件时优先用 edit_file 局部替换，避免整文件重写；新建文件用 write_file。
 4. 写完代码后运行测试或命令验证。
 5. 如果报错，读错误信息，自己修，再运行，最多重试 3 次。
 6. 任务完成时，用中文总结改了哪些文件、运行了什么、结果如何。
@@ -62,21 +70,29 @@ class Agent:
             self.messages = [
                 {
                     "role": "system",
-                    "content": SYSTEM_PROMPT.format(workspace=workspace),
+                    "content": SYSTEM_PROMPT.format(
+                        workspace=workspace, shell_hint=SHELL_HINT
+                    ),
                 }
             ]
 
     def run(self, task):
         self.messages.append({"role": "user", "content": task})
+        api_errors = 0
 
         for step in range(1, self.max_steps + 1):
             self.messages = trim(self.messages)
 
             try:
                 m = chat(self.messages, TOOL_SCHEMAS)
+                api_errors = 0
             except Exception as e:
-                print(f"[API错误] {type(e).__name__}: {e}")
-                time.sleep(2)
+                api_errors += 1
+                print(f"[API错误 {api_errors}/{MAX_API_ERRORS}] {type(e).__name__}: {e}")
+                if api_errors >= MAX_API_ERRORS:
+                    save_log(self.messages, task)
+                    raise
+                time.sleep(2 ** api_errors)
                 continue
 
             self.messages.append(msg_to_dict(m))
@@ -90,7 +106,7 @@ class Agent:
                 name = tc.function.name
                 try:
                     args = json.loads(tc.function.arguments or "{}")
-                    result = execute_tool(name, args)
+                    result = execute_tool(name, args, workspace=self.workspace)
                 except Exception as e:
                     result = f"工具执行错误: {type(e).__name__}: {e}"
 
@@ -106,4 +122,4 @@ class Agent:
 
         print("达到最大步数，停止。")
         save_log(self.messages, task)
-        return None
+        return f"达到最大步数（{self.max_steps}），任务未完成。可以继续发送指令让我接着做。"
