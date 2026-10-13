@@ -2,6 +2,8 @@ import json
 import time
 import os
 
+from openai import RateLimitError, AuthenticationError, NotFoundError
+
 from llm import chat
 from tools import TOOL_SCHEMAS, execute_tool
 from history import trim, truncate_tool_result
@@ -66,6 +68,11 @@ class Agent:
 
             try:
                 m = chat(self.messages, TOOL_SCHEMAS)
+            except RateLimitError:
+                time.sleep(5)
+                continue
+            except (AuthenticationError, NotFoundError):
+                raise
             except Exception as e:
                 print(f"[API错误] {type(e).__name__}: {e}")
                 time.sleep(2)

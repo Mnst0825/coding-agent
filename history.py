@@ -16,3 +16,5 @@ def truncate_tool_result(text: str) -> str:
     if len(text) > MAX_TOOL_CHARS:
         return text[:MAX_TOOL_CHARS] + "\n...[结果截断]"
     return text
+
+#改进：按 token 裁剪 + 滚动摘要 + 配对修正。
