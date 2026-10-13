@@ -1,3 +1,4 @@
+import json
 import os
 import uuid
 from functools import wraps
@@ -18,13 +19,16 @@ load_dotenv()
 
 from agent import Agent
 from tools import set_workspace
+from history import trim
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "change-me")
+app.secret_key = os.urandom(32)
 WEB_PASSWORD = os.environ.get("WEB_PASSWORD", "")
 
 WORKSPACE_ROOT = Path("workspace").resolve()
 WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
+
+MAX_HISTORY = 40
 
 
 def login_required(f):
@@ -44,6 +48,35 @@ def get_user_workspace():
     p = WORKSPACE_ROOT / sid
     p.mkdir(parents=True, exist_ok=True)
     return str(p)
+
+
+def history_file(ws: str) -> Path:
+    return Path(ws) / ".messages.json"
+
+
+def load_history(ws: str):
+    f = history_file(ws)
+    if not f.exists():
+        return None
+    try:
+        data = json.loads(f.read_text(encoding="utf-8"))
+        if not isinstance(data, list):
+            return None
+        return trim(data, max_messages=MAX_HISTORY)
+    except Exception as e:
+        print(f"[警告] 载入历史失败: {e}")
+        return None
+
+
+def save_history(ws: str, messages):
+    f = history_file(ws)
+    try:
+        f.write_text(
+            json.dumps(messages, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    except Exception as e:
+        print(f"[警告] 保存历史失败: {e}")
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -78,14 +111,33 @@ def api_chat():
         return jsonify({"error": "任务为空"}), 400
 
     ws = get_user_workspace()
+    history = load_history(ws)
+
     set_workspace(ws)
-    agent = Agent(workspace=ws, max_steps=30)
+    agent = Agent(workspace=ws, max_steps=30, history=history)
+
     try:
         result = agent.run(task)
     except Exception as e:
         result = f"执行出错：{type(e).__name__}: {e}"
+
+    save_history(ws, agent.messages)
     return jsonify({"result": result or "(无输出)"})
 
 
+@app.route("/api/new_session", methods=["POST"])
+@login_required
+def new_session():
+    ws = get_user_workspace()
+    f = history_file(ws)
+    if f.exists():
+        try:
+            f.unlink()
+        except Exception as e:
+            print(f"[警告] 删除历史失败: {e}")
+    return jsonify({"ok": True})
+
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug=True)
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host="0.0.0.0", port=port, debug=True)

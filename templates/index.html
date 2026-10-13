@@ -2,69 +2,203 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Coding Agent</title>
   <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #181b22;
+      --border: #262a33;
+      --text: #e6e8ee;
+      --muted: #8b90a0;
+      --accent: #4f8cff;
+      --accent-hover: #6ea1ff;
+      --user-bg: #1f2b45;
+      --agent-bg: #1a1d24;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+      background: radial-gradient(circle at 20% 0%, #1a1f2b 0%, var(--bg) 60%);
+      color: var(--text);
+    }
     body {
-      font-family: -apple-system, "Segoe UI", sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+    .app {
+      width: 100%;
       max-width: 900px;
-      margin: 20px auto;
-      padding: 0 16px;
-      background: #f4f5f7;
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 48px);
     }
-    h2 { display: inline-block; }
-    .topbar { display: flex; justify-content: space-between; align-items: center; }
-    .logout { color: #666; text-decoration: none; font-size: 14px; }
-    #messages {
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-      padding: 16px;
-      height: 480px;
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 4px 16px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .brand-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4f8cff, #a855f7);
+      box-shadow: 0 0 12px rgba(79, 140, 255, 0.7);
+    }
+    .actions { display: flex; gap: 10px; align-items: center; }
+    .btn-ghost {
+      padding: 8px 14px;
+      font-size: 13px;
+      color: var(--text);
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .btn-ghost:hover {
+      background: #1f232b;
+      border-color: #3a4050;
+    }
+    .logout {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      padding: 8px 4px;
+      transition: color 0.15s;
+    }
+    .logout:hover { color: var(--text); }
+
+    .chat {
+      flex: 1;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
       overflow-y: auto;
-      margin-bottom: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
     }
+    .chat::-webkit-scrollbar { width: 8px; }
+    .chat::-webkit-scrollbar-thumb {
+      background: #2a2f3a;
+      border-radius: 4px;
+    }
+    .chat::-webkit-scrollbar-thumb:hover { background: #3a4050; }
+
     .msg {
-      margin: 10px 0;
-      padding: 10px 14px;
-      border-radius: 10px;
+      margin: 14px 0;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: white;
+    }
+    .avatar.user { background: linear-gradient(135deg, #4f8cff, #7bb0ff); }
+    .avatar.agent { background: linear-gradient(135deg, #a855f7, #6d28d9); }
+    .bubble {
+      flex: 1;
+      padding: 12px 14px;
+      border-radius: 12px;
       white-space: pre-wrap;
       word-break: break-word;
-      line-height: 1.5;
+      line-height: 1.6;
+      font-size: 14px;
     }
-    .msg.user { background: #e6f0ff; align-self: flex-end; }
-    .msg.agent { background: #f0f0f0; }
-    .msg .role { font-weight: bold; margin-right: 6px; color: #333; }
-    #input-row { display: flex; gap: 8px; }
+    .bubble.user {
+      background: var(--user-bg);
+      border: 1px solid #2b3a5c;
+    }
+    .bubble.agent {
+      background: var(--agent-bg);
+      border: 1px solid var(--border);
+    }
+
+    .composer {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 8px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .composer:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.15);
+    }
     #task {
       flex: 1;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
       font-size: 14px;
+      padding: 8px 10px;
     }
+    #task::placeholder { color: var(--muted); }
     #send {
       padding: 10px 20px;
-      background: #0066cc;
+      background: var(--accent);
       color: white;
       border: none;
-      border-radius: 6px;
-      cursor: pointer;
+      border-radius: 10px;
       font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.05s;
     }
-    #send:disabled { background: #999; cursor: not-allowed; }
+    #send:hover:not(:disabled) { background: var(--accent-hover); }
+    #send:active:not(:disabled) { transform: scale(0.98); }
+    #send:disabled { background: #3a4050; cursor: not-allowed; }
   </style>
 </head>
 <body>
-  <div class="topbar">
-    <h2>Coding Agent</h2>
-    <a class="logout" href="/logout">退出登录</a>
-  </div>
+  <div class="app">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-dot"></div>
+        <span>Coding Agent</span>
+      </div>
+      <div class="actions">
+        <button class="btn-ghost" onclick="newSession()">新会话</button>
+        <a class="logout" href="/logout">退出登录</a>
+      </div>
+    </div>
 
-  <div id="messages"></div>
+    <div id="messages" class="chat"></div>
 
-  <div id="input-row">
-    <input id="task" placeholder="输入任务，例如：创建 hello.py 并运行" />
-    <button id="send" onclick="send()">发送</button>
+    <div class="composer">
+      <input id="task" placeholder="输入任务，例如：创建 hello.py 并运行" autocomplete="off" />
+      <button id="send" onclick="send()">发送</button>
+    </div>
   </div>
 
   <script>
@@ -73,16 +207,22 @@
     const sendBtn = document.getElementById("send");
 
     function append(role, text) {
-      const div = document.createElement("div");
-      div.className = "msg " + role;
-      const r = document.createElement("span");
-      r.className = "role";
-      r.textContent = role === "user" ? "你：" : "Agent：";
-      div.appendChild(r);
-      div.appendChild(document.createTextNode(text));
-      messages.appendChild(div);
+      const row = document.createElement("div");
+      row.className = "msg " + role;
+
+      const avatar = document.createElement("div");
+      avatar.className = "avatar " + role;
+      avatar.textContent = role === "user" ? "你" : "AI";
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble " + role;
+      bubble.textContent = text;
+
+      row.appendChild(avatar);
+      row.appendChild(bubble);
+      messages.appendChild(row);
       messages.scrollTop = messages.scrollHeight;
-      return div;
+      return bubble;
     }
 
     async function send() {
@@ -92,7 +232,7 @@
       append("user", task);
       input.value = "";
       sendBtn.disabled = true;
-      const agentDiv = append("agent", "思考中……");
+      const bubble = append("agent", "思考中……");
 
       try {
         const resp = await fetch("/api/chat", {
@@ -101,14 +241,21 @@
           body: JSON.stringify({ task }),
         });
         const data = await resp.json();
-        agentDiv.lastChild.textContent =
-          data.result || data.error || "无输出";
+        bubble.textContent = data.result || data.error || "无输出";
       } catch (e) {
-        agentDiv.lastChild.textContent = "请求失败：" + e;
+        bubble.textContent = "请求失败：" + e;
       } finally {
         sendBtn.disabled = false;
         input.focus();
       }
+    }
+
+    async function newSession() {
+      if (!confirm("确定要开启新会话吗？当前对话历史将被清空。")) return;
+      await fetch("/api/new_session", { method: "POST" });
+      messages.innerHTML = "";
+      append("agent", "已开启新会话。");
+      input.focus();
     }
 
     input.addEventListener("keydown", (e) => {

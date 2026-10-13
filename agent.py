@@ -1,8 +1,6 @@
 import json
-import time
 import os
-
-from openai import RateLimitError, AuthenticationError, NotFoundError
+import time
 
 from llm import chat
 from tools import TOOL_SCHEMAS, execute_tool
@@ -11,13 +9,17 @@ from history import trim, truncate_tool_result
 SYSTEM_PROMPT = """你是一个编程智能体。
 你只能通过工具读写文件和执行命令。
 当前工作目录是：{workspace}
+运行环境是 Windows，shell 命令请使用 Windows 兼容写法（如 dir 而不是 ls）。
 
-要求：
-1. 先探索目录和文件，再修改。
-2. 修改后尽量运行测试或命令验证。
-3. 不要编造文件内容。
-4. 任务完成后，用中文给出简短总结。
+工作流程：
+1. 先用 list_files 探索目录。
+2. 用 read_file 查看关键文件，不要凭猜测改代码。
+3. 修改文件时优先用 edit_file 局部替换，避免整文件重写。
+4. 写完代码后运行测试或命令验证。
+5. 如果报错，读错误信息，自己修，再运行，最多重试 3 次。
+6. 任务完成时，用中文总结改了哪些文件、运行了什么、结果如何。
 """
+
 
 def save_log(messages, task):
     os.makedirs("logs", exist_ok=True)
@@ -31,6 +33,7 @@ def save_log(messages, task):
         json.dump(messages, f, ensure_ascii=False, indent=2)
     print(f"[日志] 已保存到 {path}")
     return path
+
 
 def msg_to_dict(m):
     d = {"role": "assistant", "content": m.content or ""}
@@ -50,15 +53,18 @@ def msg_to_dict(m):
 
 
 class Agent:
-    def __init__(self, workspace, max_steps=30):
+    def __init__(self, workspace, max_steps=30, history=None):
         self.workspace = workspace
         self.max_steps = max_steps
-        self.messages = [
-            {
-                "role": "system",
-                "content": SYSTEM_PROMPT.format(workspace=workspace),
-            }
-        ]
+        if history:
+            self.messages = history
+        else:
+            self.messages = [
+                {
+                    "role": "system",
+                    "content": SYSTEM_PROMPT.format(workspace=workspace),
+                }
+            ]
 
     def run(self, task):
         self.messages.append({"role": "user", "content": task})
@@ -68,11 +74,6 @@ class Agent:
 
             try:
                 m = chat(self.messages, TOOL_SCHEMAS)
-            except RateLimitError:
-                time.sleep(5)
-                continue
-            except (AuthenticationError, NotFoundError):
-                raise
             except Exception as e:
                 print(f"[API错误] {type(e).__name__}: {e}")
                 time.sleep(2)

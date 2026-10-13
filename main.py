@@ -24,7 +24,6 @@ def main():
     if args.task:
         Agent(workspace=args.workspace, max_steps=args.max_steps).run(" ".join(args.task))
         return
-
     print("进入交互模式。输入任务执行，输入 exit 退出。")
     while True:
         try:
