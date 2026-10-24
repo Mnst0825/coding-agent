@@ -140,6 +140,14 @@
       background: var(--user-bg);
       border: 1px solid #2b3a5c;
     }
+    .bubble .stats {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+      white-space: normal;
+    }
     .bubble.agent {
       background: var(--agent-bg);
       border: 1px solid var(--border);
@@ -274,6 +282,18 @@
       return bubble;
     }
 
+    // 在回答下方显示本次任务的 token 消耗等统计
+    function showStats(bubble, s) {
+      const meta = document.createElement("div");
+      meta.className = "stats";
+      let text = `${s.steps} 步 · tokens ${s.total_tokens}（输入 ${s.prompt_tokens} / 输出 ${s.completion_tokens}）· 耗时 ${s.seconds}s`;
+      if (s.rag_hits && s.rag_hits.length) text += ` · 知识库命中 ${s.rag_hits.length} 条`;
+      meta.textContent = text;
+      if (s.rag_hits && s.rag_hits.length) meta.title = s.rag_hits.join("\n");
+      bubble.appendChild(meta);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
     // 把 Markdown 渲染进气泡；CDN 没加载成功时退回纯文本
     function renderMarkdown(bubble, text) {
       if (!window.marked || !window.DOMPurify) {
@@ -321,6 +341,7 @@
         }
         if (data.result) {
           renderMarkdown(bubble, data.result);
+          if (data.stats) showStats(bubble, data.stats);
         } else {
           bubble.textContent = data.error || "无输出";
         }

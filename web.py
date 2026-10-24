@@ -143,7 +143,10 @@ def api_chat():
     finally:
         lock.release()
 
-    return jsonify({"result": result or "(无输出)"})
+    return jsonify({
+        "result": result or "(无输出)",
+        "stats": getattr(agent, "stats", None),
+    })
 
 
 @app.route("/api/new_session", methods=["POST"])
