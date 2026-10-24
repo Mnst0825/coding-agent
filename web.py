@@ -162,6 +162,96 @@ def new_session():
     return jsonify({"ok": True})
 
 
+@app.route("/api/sessions", methods=["GET"])
+@login_required
+def get_sessions():
+    sessions = []
+    for p in WORKSPACE_ROOT.iterdir():
+        if p.is_dir():
+            hist_file = p / ".messages.json"
+            title = "空会话"
+            mtime = p.stat().st_mtime  # 默认用文件夹修改时间
+
+            if hist_file.exists():
+                try:
+                    mtime = hist_file.stat().st_mtime
+                    data = json.loads(hist_file.read_text(encoding="utf-8"))
+
+                    # 寻找第一条真正的用户指令作为标题
+                    for msg in data:
+                        if msg.get("role") == "user":
+                            content = msg.get("content", "")
+                            # 过滤掉系统追加的审查员提示
+                            if content.startswith("代码审查员认为"):
+                                continue
+                            # 过滤掉 RAG 附带的上下文，只取第一行
+                            clean_title = content.split("\n")[0].strip()
+                            if clean_title:
+                                title = clean_title[:25] + "..." if len(clean_title) > 25 else clean_title
+                                break
+                except Exception as e:
+                    print(f"[读取历史失败] {p.name}: {e}")
+
+            sessions.append({
+                "id": p.name,
+                "title": title,
+                "time": mtime
+            })
+
+    # 按最后修改时间倒序，最新的在最上面
+    sessions.sort(key=lambda x: x["time"], reverse=True)
+    return jsonify({"sessions": sessions, "current": session.get("sid")})
+
+
+@app.route("/api/switch_session", methods=["POST"])
+@login_required
+def switch_session():
+    data = request.get_json() or {}
+    new_sid = data.get("sid")
+    if not new_sid:
+        return jsonify({"error": "无效的 SID"}), 400
+
+    # 验证该 SID 对应的文件夹确实存在
+    p = WORKSPACE_ROOT / new_sid
+    if not p.exists() or not p.is_dir():
+        return jsonify({"error": "会话不存在"}), 404
+
+    # 直接覆盖当前浏览器的 session
+    session["sid"] = new_sid
+    return jsonify({"ok": True})
+
+
+@app.route("/api/history", methods=["GET"])
+@login_required
+def get_history():
+    """获取当前会话的聊天记录，过滤掉 system 和 tool 消息"""
+    ws = get_user_workspace()
+    f = Path(ws) / ".messages.json"
+    if not f.exists():
+        return jsonify({"history": []})
+
+    try:
+        data = json.loads(f.read_text(encoding="utf-8"))
+        clean_history = []
+        for m in data:
+            # 只保留 user 和 assistant 的普通文本（不包含带工具调用的 assistant）
+            if m.get("role") in ["user", "assistant"] and m.get("content"):
+                # 避免把加载 RAG 的那一坨又渲染出来，只取最前面的任务描述
+                if m["role"] == "user":
+                    content = m["content"].split("\n\n---\n")[0]
+                else:
+                    content = m["content"]
+
+                clean_history.append({
+                    "role": m["role"],
+                    "content": content
+                })
+        return jsonify({"history": clean_history})
+    except Exception as e:
+        print(f"[警告] 获取历史失败: {e}")
+        return jsonify({"history": []})
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     app.run(host="0.0.0.0", port=port, debug=False)

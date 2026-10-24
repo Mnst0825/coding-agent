@@ -242,7 +242,7 @@ class Agent:
 
                         self.messages.append({"role": "assistant", "content": content})
                         self.messages.append({
-                            "role": "user",
+                            "role": "system",
                             "content": f"代码审查员认为任务未达标（评分 {score}/10）。\n原因：\n{reason}\n\n请继续使用工具修改代码并验证。"
                         })
                         continue  # 跳过 return，进入下一轮 for 循环

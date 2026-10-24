@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Coding Agent</title>
-  <!-- marked 12.0.2 / DOMPurify 3.1.6 / highlight.js 11.9.0，本地托管避免 CDN 被墙 -->
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/github-dark.min.css') }}">
   <script src="{{ url_for('static', filename='vendor/marked.min.js') }}"></script>
   <script src="{{ url_for('static', filename='vendor/purify.min.js') }}"></script>
@@ -77,6 +76,21 @@
       background: #1f232b;
       border-color: #3a4050;
     }
+    /* 新增下拉框样式 */
+    #session-select {
+      padding: 8px 14px;
+      font-size: 13px;
+      color: var(--text);
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      outline: none;
+      cursor: pointer;
+      max-width: 200px;
+    }
+    #session-select:hover { background: #1f232b; }
+    #session-select option { background: var(--panel); }
+
     .logout {
       color: var(--muted);
       text-decoration: none;
@@ -96,10 +110,7 @@
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
     }
     .chat::-webkit-scrollbar { width: 8px; }
-    .chat::-webkit-scrollbar-thumb {
-      background: #2a2f3a;
-      border-radius: 4px;
-    }
+    .chat::-webkit-scrollbar-thumb { background: #2a2f3a; border-radius: 4px; }
     .chat::-webkit-scrollbar-thumb:hover { background: #3a4050; }
 
     .msg {
@@ -109,48 +120,24 @@
       align-items: flex-start;
       animation: fadeIn 0.2s ease;
     }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
     .avatar {
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 700;
-      color: white;
+      width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: white;
     }
     .avatar.user { background: linear-gradient(135deg, #4f8cff, #7bb0ff); }
     .avatar.agent { background: linear-gradient(135deg, #a855f7, #6d28d9); }
     .bubble {
-      flex: 1;
-      padding: 12px 14px;
-      border-radius: 12px;
-      white-space: pre-wrap;
-      word-break: break-word;
-      line-height: 1.6;
-      font-size: 14px;
+      flex: 1; padding: 12px 14px; border-radius: 12px;
+      white-space: pre-wrap; word-break: break-word;
+      line-height: 1.6; font-size: 14px;
     }
-    .bubble.user {
-      background: var(--user-bg);
-      border: 1px solid #2b3a5c;
-    }
+    .bubble.user { background: var(--user-bg); border: 1px solid #2b3a5c; }
+    .bubble.agent { background: var(--agent-bg); border: 1px solid var(--border); }
     .bubble .stats {
-      margin-top: 10px;
-      padding-top: 8px;
-      border-top: 1px solid var(--border);
-      font-size: 12px;
-      color: var(--muted);
-      white-space: normal;
-    }
-    .bubble.agent {
-      background: var(--agent-bg);
-      border: 1px solid var(--border);
+      margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--muted); white-space: normal;
     }
 
     /* Markdown 渲染后的样式 */
@@ -159,38 +146,13 @@
     .md > :last-child { margin-bottom: 0; }
     .md p, .md ul, .md ol, .md blockquote, .md pre, .md table { margin: 8px 0; }
     .md h1, .md h2, .md h3, .md h4 { margin: 14px 0 8px; line-height: 1.35; }
-    .md h1 { font-size: 20px; }
-    .md h2 { font-size: 18px; }
-    .md h3 { font-size: 16px; }
-    .md h4 { font-size: 14px; }
-    .md ul, .md ol { padding-left: 22px; }
-    .md li { margin: 3px 0; }
+    .md h1 { font-size: 20px; } .md h2 { font-size: 18px; } .md h3 { font-size: 16px; } .md h4 { font-size: 14px; }
+    .md ul, .md ol { padding-left: 22px; } .md li { margin: 3px 0; }
     .md a { color: var(--accent-hover); }
-    .md blockquote {
-      padding: 2px 12px;
-      color: var(--muted);
-      border-left: 3px solid #3a4050;
-    }
-    .md code {
-      font-family: Consolas, "JetBrains Mono", Menlo, monospace;
-      font-size: 13px;
-      padding: 2px 5px;
-      background: #262a33;
-      border-radius: 4px;
-    }
-    .md pre {
-      padding: 12px 14px;
-      overflow-x: auto;
-      background: #0d1017;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-    }
-    .md pre code {
-      padding: 0;
-      background: none;
-      font-size: 13px;
-      line-height: 1.5;
-    }
+    .md blockquote { padding: 2px 12px; color: var(--muted); border-left: 3px solid #3a4050; }
+    .md code { font-family: Consolas, monospace; font-size: 13px; padding: 2px 5px; background: #262a33; border-radius: 4px; }
+    .md pre { padding: 12px 14px; overflow-x: auto; background: #0d1017; border: 1px solid var(--border); border-radius: 8px; }
+    .md pre code { padding: 0; background: none; font-size: 13px; line-height: 1.5; }
     .md pre code.hljs { padding: 0; background: none; }
     .md table { border-collapse: collapse; display: block; overflow-x: auto; }
     .md th, .md td { padding: 6px 10px; border: 1px solid var(--border); }
@@ -198,42 +160,19 @@
     .md hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
 
     .composer {
-      margin-top: 16px;
-      display: flex;
-      gap: 10px;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 8px;
-      transition: border-color 0.15s, box-shadow 0.15s;
+      margin-top: 16px; display: flex; gap: 10px;
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 14px; padding: 8px; transition: all 0.15s;
     }
-    .composer:focus-within {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.15);
-    }
-    #task {
-      flex: 1;
-      background: transparent;
-      border: none;
-      outline: none;
-      color: var(--text);
-      font-size: 14px;
-      padding: 8px 10px;
-    }
+    .composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.15); }
+    #task { flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-size: 14px; padding: 8px 10px; }
     #task::placeholder { color: var(--muted); }
     #send {
-      padding: 10px 20px;
-      background: var(--accent);
-      color: white;
-      border: none;
-      border-radius: 10px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.15s, transform 0.05s;
+      padding: 10px 20px; background: var(--accent); color: white;
+      border: none; border-radius: 10px; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: background 0.15s;
     }
     #send:hover:not(:disabled) { background: var(--accent-hover); }
-    #send:active:not(:disabled) { transform: scale(0.98); }
     #send:disabled { background: #3a4050; cursor: not-allowed; }
   </style>
 </head>
@@ -245,6 +184,9 @@
         <span>Coding Agent</span>
       </div>
       <div class="actions">
+        <select id="session-select" onchange="switchSession(this.value)">
+          <option value="">加载中...</option>
+        </select>
         <button class="btn-ghost" onclick="newSession()">新会话</button>
         <a class="logout" href="/logout">退出登录</a>
       </div>
@@ -262,19 +204,17 @@
     const messages = document.getElementById("messages");
     const input = document.getElementById("task");
     const sendBtn = document.getElementById("send");
+    const sessionSelect = document.getElementById("session-select");
 
     function append(role, text) {
       const row = document.createElement("div");
       row.className = "msg " + role;
-
       const avatar = document.createElement("div");
       avatar.className = "avatar " + role;
       avatar.textContent = role === "user" ? "你" : "AI";
-
       const bubble = document.createElement("div");
       bubble.className = "bubble " + role;
       bubble.textContent = text;
-
       row.appendChild(avatar);
       row.appendChild(bubble);
       messages.appendChild(row);
@@ -282,7 +222,6 @@
       return bubble;
     }
 
-    // 在回答下方显示本次任务的 token 消耗等统计
     function showStats(bubble, s) {
       const meta = document.createElement("div");
       meta.className = "stats";
@@ -294,23 +233,62 @@
       messages.scrollTop = messages.scrollHeight;
     }
 
-    // 把 Markdown 渲染进气泡；CDN 没加载成功时退回纯文本
     function renderMarkdown(bubble, text) {
       if (!window.marked || !window.DOMPurify) {
         bubble.textContent = text;
         return;
       }
-      // 模型输出可能夹带文件里的 HTML，必须先消毒再插入，防止 XSS
       bubble.innerHTML = DOMPurify.sanitize(marked.parse(text, { gfm: true, breaks: true }));
       bubble.classList.add("md");
-      bubble.querySelectorAll("a").forEach((a) => {
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
-      });
-      if (window.hljs) {
-        bubble.querySelectorAll("pre code").forEach((el) => hljs.highlightElement(el));
-      }
+      bubble.querySelectorAll("a").forEach((a) => { a.target = "_blank"; a.rel = "noopener noreferrer"; });
+      if (window.hljs) bubble.querySelectorAll("pre code").forEach((el) => hljs.highlightElement(el));
       messages.scrollTop = messages.scrollHeight;
+    }
+
+    // --- 新增：加载会话列表 ---
+    async function loadSessions() {
+      try {
+        const resp = await fetch("/api/sessions");
+        const data = await resp.json();
+        sessionSelect.innerHTML = "";
+
+        if (data.sessions.length === 0) {
+          const opt = document.createElement("option");
+          opt.textContent = "无历史会话";
+          sessionSelect.appendChild(opt);
+          return;
+        }
+
+        data.sessions.forEach(s => {
+          const opt = document.createElement("option");
+          opt.value = s.id;
+          opt.textContent = s.title;
+          if (s.id === data.current) opt.selected = true;
+          sessionSelect.appendChild(opt);
+        });
+      } catch (e) {
+        console.error("加载会话失败", e);
+      }
+    }
+
+    // --- 新增：加载当前会话的历史消息 ---
+    async function loadHistory() {
+      messages.innerHTML = "";
+      try {
+        const resp = await fetch("/api/history");
+        const data = await resp.json();
+
+        if (data.history && data.history.length > 0) {
+          data.history.forEach(m => {
+            const bubble = append(m.role === "user" ? "user" : "agent", "");
+            renderMarkdown(bubble, m.content);
+          });
+        } else {
+           append("agent", "已开启新会话，请输入任务。");
+        }
+      } catch (e) {
+        console.error("加载历史失败", e);
+      }
     }
 
     async function send() {
@@ -328,20 +306,22 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ task }),
         });
+
         if (resp.redirected || resp.url.includes("/login")) {
           bubble.textContent = "登录已失效，请刷新页面重新登录。";
           return;
         }
+
         let data;
-        try {
-          data = await resp.json();
-        } catch {
+        try { data = await resp.json(); } catch {
           bubble.textContent = `服务器返回异常（HTTP ${resp.status}），可能是请求超时。`;
           return;
         }
+
         if (data.result) {
           renderMarkdown(bubble, data.result);
           if (data.stats) showStats(bubble, data.stats);
+          loadSessions(); // 任务完成后刷新一下下拉框（更新标题/时间）
         } else {
           bubble.textContent = data.error || "无输出";
         }
@@ -356,17 +336,32 @@
     async function newSession() {
       if (!confirm("确定要开启新会话吗？当前对话历史将被清空。")) return;
       await fetch("/api/new_session", { method: "POST" });
+      await loadSessions();
       messages.innerHTML = "";
       append("agent", "已开启新会话。");
       input.focus();
     }
 
+    async function switchSession(sid) {
+      if (!sid) return;
+      await fetch("/api/switch_session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sid })
+      });
+      await loadHistory(); // 切换到历史会话时，加载聊天记录
+    }
+
     input.addEventListener("keydown", (e) => {
-      // 中文输入法选词时按回车不应发送
       if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) send();
     });
 
-    input.focus();
+    // 初始化
+    (async function init() {
+      await loadSessions();
+      await loadHistory();
+      input.focus();
+    })();
   </script>
 </body>
 </html>
